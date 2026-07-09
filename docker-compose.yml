@@ -1,0 +1,263 @@
+services:
+
+  kafka:
+    image: apache/kafka:3.7.0
+    container_name: bank-kafka
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_RETENTION_HOURS: 168
+      CLUSTER_ID: "bankplatform-cluster-001"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    networks:
+      - bank-network
+    healthcheck:
+      test: [ "CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list" ]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  # Kafka UI — browse topics and messages in a browser
+  # Open: http://localhost:8090
+  kafka-ui:
+    image: provectuslabs/kafka-ui:v0.7.2
+    container_name: bank-kafka-ui
+    ports:
+      - "8090:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: bank-platform
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - bank-network
+
+  # ── Redis (cache + session store) ────────────────────────
+  # Used for: OTPs, refresh tokens, rate limiting,
+  # idempotency keys, short-lived caches
+  redis:
+    image: redis:7.2-alpine
+    container_name: bank-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis-data:/data
+    networks:
+      - bank-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── MinIO (object storage for KYC documents) ─────────────
+  # Stores photos, ID scans, selfies uploaded during KYC.
+  # S3-compatible — swap for AWS S3 in production with zero
+  # code changes.
+  # Console: http://localhost:9001
+  minio:
+    image: minio/minio:latest
+    container_name: bank-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      - bank-network
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  # ── Zipkin (distributed tracing) ─────────────────────────
+  # Tracks a single request as it travels across all services.
+  # Open: http://localhost:9411
+  zipkin:
+    image: openzipkin/zipkin:3
+    container_name: bank-zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - bank-network
+
+  # ── PostgreSQL databases (one per service) ────────────────
+  # Each service owns its database completely.
+  # No service ever connects to another service's database.
+
+  auth-db:
+    image: postgres:16-alpine
+    container_name: bank-auth-db
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: auth_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - auth-db-data:/var/lib/postgresql/data
+    networks:
+      - bank-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d auth_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  identity-db:
+    image: postgres:16-alpine
+    container_name: bank-identity-db
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_DB: identity_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - identity-db-data:/var/lib/postgresql/data
+    networks:
+      - bank-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d identity_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  account-db:
+    image: postgres:16-alpine
+    container_name: bank-account-db
+    ports:
+      - "5435:5432"
+    environment:
+      POSTGRES_DB: account_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - account-db-data:/var/lib/postgresql/data
+    networks:
+      - bank-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d account_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ledger-db:
+    image: postgres:16-alpine
+    container_name: bank-ledger-db
+    ports:
+      - "5436:5432"
+    environment:
+      POSTGRES_DB: ledger_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - ledger-db-data:/var/lib/postgresql/data
+    networks:
+      - bank-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ledger_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  transfer-db:
+    image: postgres:16-alpine
+    container_name: bank-transfer-db
+    ports:
+      - "5437:5432"
+    environment:
+      POSTGRES_DB: transfer_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - transfer-db-data:/var/lib/postgresql/data
+    networks:
+      - bank-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d transfer_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  card-db:
+    image: postgres:16-alpine
+    container_name: bank-card-db
+    ports:
+      - "5438:5432"
+    environment:
+      POSTGRES_DB: card_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - card-db-data:/var/lib/postgresql/data
+    networks:
+      - bank-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d card_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  notification-db:
+    image: postgres:16-alpine
+    container_name: bank-notification-db
+    ports:
+      - "5439:5432"
+    environment:
+      POSTGRES_DB: notification_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - notification-db-data:/var/lib/postgresql/data
+    networks:
+      - bank-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d notification_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+# ── Volumes ───────────────────────────────────────────────
+# Named volumes persist data between restarts.
+# Without this, every docker-compose down wipes your databases.
+volumes:
+  kafka-data:
+  redis-data:
+  minio-data:
+  auth-db-data:
+  identity-db-data:
+  account-db-data:
+  ledger-db-data:
+  transfer-db-data:
+  card-db-data:
+  notification-db-data:
+
+# ── Networks ──────────────────────────────────────────────
+# All containers share one network so they can reach each
+# other by name. auth-service can connect to "auth-db:5432"
+# because both are on bank-network.
+networks:
+  bank-network:
+    driver: bridge
