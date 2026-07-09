@@ -1,0 +1,69 @@
+# Maven puts all compiled code and built JARs here.
+# Generated automatically — never commit these.
+target/
+
+# The compiled JAR and WAR files themselves
+*.jar
+*.war
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+.kotlin
+
+### IntelliJ IDEA ###
+.idea/modules.xml
+.idea/jarRepositories.xml
+.idea/compiler.xml
+.idea/libraries/
+*.iws
+*.iml
+*.ipr
+
+### Eclipse ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
+### Mac OS ###
+.DS_Store
+
+# Windows thumbnail cache
+Thumbs.db
+
+# ───────────────────────────────────────────────
+# SECRETS — these must never reach GitHub
+# ───────────────────────────────────────────────
+
+# Contains database passwords, Redis password, MinIO keys.
+# Anyone who gets this file can access all your databases.
+.env
+
+# If you ever create environment-specific secret files
+*.env.local
+application-secret.yml
+application-prod.yml
+
+# ───────────────────────────────────────────────
+# LOGS
+# ───────────────────────────────────────────────
+
+# Log files generated at runtime — not source code
+*.log
+logs/
