@@ -25,6 +25,7 @@ public enum ErrorCode {
     // ── Identity / BVN
     BVN_NOT_FOUND("BVN not found", HttpStatus.NOT_FOUND),
     BVN_ALREADY_EXISTS("A BVN already exists for this NIN", HttpStatus.CONFLICT),
+    BVN_VERIFICATION_FAILED("BVN verification failed", HttpStatus.BAD_GATEWAY),
     KYC_NOT_VERIFIED("KYC verification is required", HttpStatus.FORBIDDEN),
     KYC_ALREADY_SUBMITTED("KYC documents already submitted", HttpStatus.CONFLICT),
     KYC_DOCUMENT_TOO_LARGE("Document exceeds maximum allowed size", HttpStatus.BAD_REQUEST),
