@@ -59,6 +59,7 @@ Thumbs.db
 *.env.local
 application-secret.yml
 application-prod.yml
+application.yml
 
 # ───────────────────────────────────────────────
 # LOGS
