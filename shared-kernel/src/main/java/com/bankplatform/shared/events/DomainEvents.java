@@ -49,7 +49,7 @@ public final class DomainEvents {
     ){}
 
     /**TRANSFER EVENTS*/
-    public record TransferInitiatedEVENT(
+    public record TransferInitiatedEvent(
             String eventId,
             Instant occurredAt,
             String traceId,
