@@ -31,4 +31,8 @@ public final class AuthResponses {
             boolean      pinSet,
             Instant      createdAt
     ){}
+
+    public record PinVerificationResponse(
+            boolean valid
+    ) {}
 }
