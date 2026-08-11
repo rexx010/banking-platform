@@ -26,6 +26,7 @@ public class AuthController {
     private final SetTransactionPinUseCase setTransactionPinUseCase;
     private final AuthWebMapper mapper;
     private final UpdateUserProfileUseCase updateUserProfileUseCase;
+    private final VerifyPinUseCase verifyPinUseCase;
 
     /**
      POST /api/v1/auth/register
@@ -119,5 +120,22 @@ public class AuthController {
                 mapper.toProfileResponse(updated),
                 "Profile updated successfully"
         );
+    }
+
+    /**
+     * POST /internal/auth/pin/verify
+     * Called by transfer-service before any money movement.
+     * Verifies the transaction PIN without exposing the hash.
+     * Not routed through API Gateway — internal network only.
+     */
+    @PostMapping("/internal/auth/pin/verify")
+    public ApiResponse<PinVerificationResponse> verifyPin(
+            @RequestBody PinVerificationRequest request
+    ) {
+        boolean valid = verifyPinUseCase.verifyPin(
+                request.userId(),
+                request.pin()
+        );
+        return ApiResponse.ok(new PinVerificationResponse(valid));
     }
 }
