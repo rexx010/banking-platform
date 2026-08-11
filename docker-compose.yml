@@ -54,7 +54,7 @@ services:
     image: redis:7.2-alpine
     container_name: bank-redis
     ports:
-      - "6379:6379"
+      - "6381:6379"
     command: redis-server --requirepass ${REDIS_PASSWORD}
     volumes:
       - redis-data:/data
