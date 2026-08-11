@@ -69,4 +69,9 @@ public final class AuthRequests {
             String phoneNumber
 
     ) {}
+
+    public record PinVerificationRequest(
+            @NotBlank String userId,
+            @NotBlank String pin
+    ) {}
 }
