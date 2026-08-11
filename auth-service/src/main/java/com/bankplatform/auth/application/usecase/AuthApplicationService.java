@@ -25,7 +25,8 @@ public class AuthApplicationService
             LoginUseCase,
             RefreshTokenUseCase,
             SetTransactionPinUseCase,
-            UpdateUserProfileUseCase {
+            UpdateUserProfileUseCase,
+            VerifyPinUseCase {
     private final UserRepository userRepository;
     private final RefreshTokenStore refreshTokenStore;
     private final JwtService jwtService;
@@ -203,5 +204,27 @@ public class AuthApplicationService
 
         log.info("Profile updated userId={}", userId);
         return saved;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean verifyPin(String userId, String rawPin) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() ->
+                        new BankException(ErrorCode.RESOURCE_NOT_FOUND));
+
+        if (!user.hasPinSet()) {
+            throw new BankException(ErrorCode.AUTH_PIN_NOT_SET);
+        }
+
+        boolean valid = passwordEncoder.matches(
+                rawPin, user.getTransactionPinHash()
+        );
+
+        if (!valid) {
+            log.warn("Invalid PIN attempt userId={}", userId);
+        }
+
+        return valid;
     }
 }
