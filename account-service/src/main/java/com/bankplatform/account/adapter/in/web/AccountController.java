@@ -3,6 +3,7 @@ package com.bankplatform.account.adapter.in.web;
 import com.bankplatform.account.adapter.in.web.dto.request.AccountRequests.*;
 import com.bankplatform.account.adapter.in.web.dto.response.AccountResponses.*;
 import com.bankplatform.account.adapter.in.web.mapper.AccountWebMapper;
+import com.bankplatform.account.application.usecase.AccountCommands;
 import com.bankplatform.account.domain.port.in.*;
 import com.bankplatform.shared.web.ApiResponse;
 import jakarta.validation.Valid;
@@ -22,6 +23,8 @@ public class AccountController {
 
     private final OpenAccountUseCase openAccountUseCase;
     private final GetAccountUseCase  getAccountUseCase;
+    private final DebitAccountUseCase  debitAccountUseCase;
+    private final CreditAccountUseCase creditAccountUseCase;
     private final AccountWebMapper   mapper;
 
     @PostMapping
@@ -77,4 +80,49 @@ public class AccountController {
         var account = getAccountUseCase.getByAccountNumber(accountNumber);
         return ApiResponse.ok(mapper.toResponse(account));
     }
+
+    /**
+     * POST /internal/accounts/debit
+     * Called by transfer-service and card-service.
+     * Debits an account by the specified amount.
+     * Not exposed through API Gateway.
+     */
+    @PostMapping("/internal/accounts/debit")
+    public ApiResponse<Void> debitAccount(
+            @RequestBody DebitCreditRequest request
+    ) {
+        debitAccountUseCase.debit(new AccountCommands.DebitCommand(
+                request.accountNumber(),
+                request.amountKobo(),
+                request.currency(),
+                request.reference()
+        ));
+        return ApiResponse.noContent("Account debited successfully");
+    }
+
+    /**
+     * POST /internal/accounts/credit
+     * Called by transfer-service to credit destination account.
+     * Not exposed through API Gateway.
+     */
+    @PostMapping("/internal/accounts/credit")
+    public ApiResponse<Void> creditAccount(
+            @RequestBody DebitCreditRequest request
+    ) {
+        creditAccountUseCase.credit(new AccountCommands.CreditCommand(
+                request.accountNumber(),
+                request.amountKobo(),
+                request.currency(),
+                request.reference()
+        ));
+        return ApiResponse.noContent("Account credited successfully");
+    }
+
+    // Add this record at the bottom of the class
+    record DebitCreditRequest(
+            String accountNumber,
+            long   amountKobo,
+            String currency,
+            String reference
+    ) {}
 }
